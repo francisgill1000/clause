@@ -1,4 +1,3 @@
-import React from 'react';
 import { Head, Link, useForm } from '@inertiajs/react';
 import { ClauseLogo } from '../../Components/Clause/Icons';
 
@@ -11,9 +10,7 @@ export default function Login({ status, canResetPassword }) {
 
   const submit = (e) => {
     e.preventDefault();
-    post(route('login'), {
-      onFinish: () => reset('password'),
-    });
+    post(route('login'), { onFinish: () => reset('password') });
   };
 
   return (
@@ -21,75 +18,74 @@ export default function Login({ status, canResetPassword }) {
       <Head title="Log in" />
 
       <div className="auth-brand">
-        <ClauseLogo size={30} />
-        <span>Clause</span>
+        <div className="auth-brand-icon">
+          <ClauseLogo size={22} />
+        </div>
+        <div className="auth-brand-text">Clause</div>
       </div>
 
       <div className="auth-card">
+        <div className="auth-card-title">Welcome back</div>
+        <div className="auth-card-sub">Sign in to your account to continue</div>
+
         {status && <div className="auth-status">{status}</div>}
 
         <form onSubmit={submit}>
-          <div className="field">
-            <label className="field-label">Email</label>
-            <div className="input-wrap">
-              <input
-                id="email"
-                type="email"
-                value={data.email}
-                autoComplete="username"
-                autoFocus
-                onChange={(e) => setData('email', e.target.value)}
-                placeholder="you@company.com"
-              />
-            </div>
+          <div className="auth-field">
+            <label className="auth-label" htmlFor="email">Email address</label>
+            <input
+              id="email"
+              className="auth-input"
+              type="email"
+              value={data.email}
+              autoComplete="username"
+              autoFocus
+              onChange={(e) => setData('email', e.target.value)}
+              placeholder="you@company.com"
+            />
             {errors.email && <div className="auth-error">{errors.email}</div>}
           </div>
 
-          <div className="field">
-            <label className="field-label">Password</label>
-            <div className="input-wrap">
-              <input
-                id="password"
-                type="password"
-                value={data.password}
-                autoComplete="current-password"
-                onChange={(e) => setData('password', e.target.value)}
-                placeholder="Enter your password"
-              />
-            </div>
+          <div className="auth-field">
+            <label className="auth-label" htmlFor="password">Password</label>
+            <input
+              id="password"
+              className="auth-input"
+              type="password"
+              value={data.password}
+              autoComplete="current-password"
+              onChange={(e) => setData('password', e.target.value)}
+              placeholder="Enter your password"
+            />
             {errors.password && <div className="auth-error">{errors.password}</div>}
           </div>
 
-          <div className="auth-checkbox-wrap">
-            <input
-              type="checkbox"
-              id="remember"
-              checked={data.remember}
-              onChange={(e) => setData('remember', e.target.checked)}
-            />
-            <label htmlFor="remember">Remember me</label>
-          </div>
-
-          <div className="auth-footer">
+          <div className="auth-row">
+            <label className="auth-checkbox">
+              <input
+                type="checkbox"
+                checked={data.remember}
+                onChange={(e) => setData('remember', e.target.checked)}
+              />
+              <span>Remember me</span>
+            </label>
             {canResetPassword && (
               <Link href={route('password.request')} className="auth-link">
                 Forgot password?
               </Link>
             )}
-            {!canResetPassword && <span />}
-            <button type="submit" className="btn btn-primary btn-md" disabled={processing}>
-              Log in
-            </button>
           </div>
+
+          <button type="submit" className="auth-submit" disabled={processing}>
+            {processing ? 'Signing in...' : 'Sign in'}
+          </button>
         </form>
       </div>
 
-      <p style={{ marginTop: 20, fontSize: 13, color: 'var(--text-4)' }}>
+      <div className="auth-alt">
         Don't have an account?{' '}
-        <Link href={route('register')} className="auth-link" style={{ color: 'var(--mint-400)' }}>
-          Create one
-        </Link>
-      </p>
+        <Link href={route('register')}>Create one</Link>
+      </div>
     </div>
   );
 }

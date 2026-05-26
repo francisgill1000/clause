@@ -1,4 +1,3 @@
-import React from 'react';
 import { Head, Link, useForm } from '@inertiajs/react';
 import { ClauseLogo } from '../../Components/Clause/Icons';
 
@@ -19,89 +18,88 @@ export default function Register() {
 
   return (
     <div className="auth-page">
-      <Head title="Register" />
+      <Head title="Create account" />
 
       <div className="auth-brand">
-        <ClauseLogo size={30} />
-        <span>Clause</span>
+        <div className="auth-brand-icon">
+          <ClauseLogo size={22} />
+        </div>
+        <div className="auth-brand-text">Clause</div>
       </div>
 
       <div className="auth-card">
+        <div className="auth-card-title">Create your account</div>
+        <div className="auth-card-sub">Get started with contract management</div>
+
         <form onSubmit={submit}>
-          <div className="field">
-            <label className="field-label">Name</label>
-            <div className="input-wrap">
-              <input
-                id="name"
-                type="text"
-                value={data.name}
-                autoComplete="name"
-                autoFocus
-                onChange={(e) => setData('name', e.target.value)}
-                placeholder="Your full name"
-                required
-              />
-            </div>
+          <div className="auth-field">
+            <label className="auth-label" htmlFor="name">Full name</label>
+            <input
+              id="name"
+              className="auth-input"
+              type="text"
+              value={data.name}
+              autoComplete="name"
+              autoFocus
+              onChange={(e) => setData('name', e.target.value)}
+              placeholder="Imani Okafor"
+            />
             {errors.name && <div className="auth-error">{errors.name}</div>}
           </div>
 
-          <div className="field">
-            <label className="field-label">Email</label>
-            <div className="input-wrap">
-              <input
-                id="email"
-                type="email"
-                value={data.email}
-                autoComplete="username"
-                onChange={(e) => setData('email', e.target.value)}
-                placeholder="you@company.com"
-                required
-              />
-            </div>
+          <div className="auth-field">
+            <label className="auth-label" htmlFor="email">Email address</label>
+            <input
+              id="email"
+              className="auth-input"
+              type="email"
+              value={data.email}
+              autoComplete="username"
+              onChange={(e) => setData('email', e.target.value)}
+              placeholder="you@company.com"
+            />
             {errors.email && <div className="auth-error">{errors.email}</div>}
           </div>
 
-          <div className="field">
-            <label className="field-label">Password</label>
-            <div className="input-wrap">
-              <input
-                id="password"
-                type="password"
-                value={data.password}
-                autoComplete="new-password"
-                onChange={(e) => setData('password', e.target.value)}
-                placeholder="Create a password"
-                required
-              />
-            </div>
+          <div className="auth-field">
+            <label className="auth-label" htmlFor="password">Password</label>
+            <input
+              id="password"
+              className="auth-input"
+              type="password"
+              value={data.password}
+              autoComplete="new-password"
+              onChange={(e) => setData('password', e.target.value)}
+              placeholder="Min. 8 characters"
+            />
             {errors.password && <div className="auth-error">{errors.password}</div>}
           </div>
 
-          <div className="field">
-            <label className="field-label">Confirm password</label>
-            <div className="input-wrap">
-              <input
-                id="password_confirmation"
-                type="password"
-                value={data.password_confirmation}
-                autoComplete="new-password"
-                onChange={(e) => setData('password_confirmation', e.target.value)}
-                placeholder="Confirm your password"
-                required
-              />
-            </div>
+          <div className="auth-field">
+            <label className="auth-label" htmlFor="password_confirmation">Confirm password</label>
+            <input
+              id="password_confirmation"
+              className="auth-input"
+              type="password"
+              value={data.password_confirmation}
+              autoComplete="new-password"
+              onChange={(e) => setData('password_confirmation', e.target.value)}
+              placeholder="Repeat your password"
+            />
             {errors.password_confirmation && <div className="auth-error">{errors.password_confirmation}</div>}
           </div>
 
-          <div className="auth-footer">
-            <Link href={route('login')} className="auth-link">
-              Already registered?
-            </Link>
-            <button type="submit" className="btn btn-primary btn-md" disabled={processing}>
-              Register
-            </button>
-          </div>
+          <div style={{ height: 8 }} />
+
+          <button type="submit" className="auth-submit" disabled={processing}>
+            {processing ? 'Creating account...' : 'Create account'}
+          </button>
         </form>
+      </div>
+
+      <div className="auth-alt">
+        Already have an account?{' '}
+        <Link href={route('login')}>Sign in</Link>
       </div>
     </div>
   );
