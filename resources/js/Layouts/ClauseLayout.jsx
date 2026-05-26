@@ -1,5 +1,5 @@
 import React from 'react';
-import { Head, Link, usePage } from '@inertiajs/react';
+import { Head, Link, usePage, router } from '@inertiajs/react';
 import {
   ClauseLogo, Dashboard, FileText, Inbox, Signature, Repeat,
   Folder, BookOpen, Layers, Users, Building, Chart, History,
@@ -110,10 +110,21 @@ export default function ClauseLayout({ children, title = '' }) {
 
           <div className="sidebar-footer">
             <div className="sidebar-avatar">{initials}</div>
-            <div>
+            <div style={{ flex: 1, minWidth: 0 }}>
               <div className="sidebar-user-name">{user?.name || 'User'}</div>
               <div className="sidebar-user-role">{user?.email || ''}</div>
             </div>
+            <button
+              onClick={() => router.post(route('logout'))}
+              className="sidebar-logout"
+              title="Log out"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                <polyline points="16 17 21 12 16 7" />
+                <line x1="21" y1="12" x2="9" y2="12" />
+              </svg>
+            </button>
           </div>
         </aside>
 

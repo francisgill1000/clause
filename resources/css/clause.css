@@ -251,6 +251,18 @@ input, select, textarea { font: inherit; color: inherit; }
   color: var(--text-4);
 }
 
+.sidebar-logout {
+  padding: 6px;
+  border-radius: 6px;
+  color: var(--text-4);
+  transition: color 0.15s, background 0.15s;
+  flex-shrink: 0;
+}
+.sidebar-logout:hover {
+  color: var(--danger);
+  background: var(--danger-soft);
+}
+
 /* Main content */
 .main-content {
   flex: 1;
