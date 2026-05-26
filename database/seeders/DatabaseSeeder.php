@@ -17,10 +17,11 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         // ── Admin User (reads from env in production) ──────────────────
-        $user = User::factory()->create([
+        $user = User::create([
             'name' => 'Imani Okafor',
             'email' => env('Admin_EMAIL', 'imani@halcyon.io'),
             'password' => bcrypt(env('Admin_PASSWORD', 'password')),
+            'email_verified_at' => now(),
         ]);
 
         $uid = $user->id;
