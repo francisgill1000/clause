@@ -1,40 +1,52 @@
 import React from 'react';
-import { Head, usePage, router } from '@inertiajs/react';
+import { Head, Link, usePage } from '@inertiajs/react';
 import ClauseLayout from '../Layouts/ClauseLayout';
 import { PageHeader, StatTile, Card, Badge, Btn } from '../Components/Clause/UI';
 import { ChevronRight, Clock, FileText } from '../Components/Clause/Icons';
+
+function formatCurrency(value) {
+  const num = Number(value) || 0;
+  if (num >= 1_000_000) return (num / 1_000_000).toFixed(1) + 'M';
+  if (num >= 1_000) return (num / 1_000).toFixed(0) + 'K';
+  return num.toLocaleString();
+}
+
+function daysUntil(dateStr) {
+  if (!dateStr) return null;
+  const end = new Date(dateStr);
+  const now = new Date();
+  const diff = Math.ceil((end - now) / (1000 * 60 * 60 * 24));
+  return diff > 0 ? diff : 0;
+}
+
+function timeAgo(dateStr) {
+  if (!dateStr) return '';
+  const date = new Date(dateStr);
+  const now = new Date();
+  const diffMs = now - date;
+  const hours = Math.floor(diffMs / (1000 * 60 * 60));
+  if (hours < 1) return 'just now';
+  if (hours < 24) return hours + 'h ago';
+  const days = Math.floor(hours / 24);
+  if (days < 7) return days + 'd ago';
+  return date.toLocaleDateString();
+}
 
 export default function Dashboard({ stats, queue, renewals, pipeline }) {
   const { auth } = usePage().props;
   const user = auth?.user;
 
-  const s = stats || {
-    activeValue: '2.4M',
-    inNegotiation: 12,
-    avgCycle: '18d',
-    renewingSoon: 6,
-  };
+  const s = stats || {};
+  const activeValue = formatCurrency(s.active_value ?? 0);
+  const inNegotiation = s.in_negotiation_count ?? 0;
+  const avgCycle = (s.avg_cycle_time ?? 0) + 'd';
+  const renewingSoon = s.expiring_90_days_count ?? 0;
 
-  const q = queue || [
-    { id: 'CTR-1024', title: 'SaaS Master Agreement', counterparty: 'Acme Corp', status: 'draft', updated: '2h ago' },
-    { id: 'CTR-1021', title: 'NDA - Project Atlas', counterparty: 'Globex Inc', status: 'pending', updated: '4h ago' },
-    { id: 'CTR-1019', title: 'SOW - Phase 2 Build', counterparty: 'Initech LLC', status: 'active', updated: '1d ago' },
-    { id: 'CTR-1017', title: 'Data Processing Addendum', counterparty: 'Umbrella Co', status: 'draft', updated: '2d ago' },
-  ];
+  const q = Array.isArray(queue) ? queue : [];
+  const r = Array.isArray(renewals) ? renewals : [];
+  const p = Array.isArray(pipeline) ? pipeline : [];
 
-  const r = renewals || [
-    { id: 'CTR-0988', title: 'Cloud Infrastructure MSA', counterparty: 'Skyline Tech', daysLeft: 14, progress: 85 },
-    { id: 'CTR-0991', title: 'Support Services Agreement', counterparty: 'NovaCare', daysLeft: 28, progress: 65 },
-    { id: 'CTR-0994', title: 'Reseller Agreement', counterparty: 'TradeLink', daysLeft: 45, progress: 40 },
-  ];
-
-  const p = pipeline || [
-    { stage: 'Drafting', count: 5, pct: 20 },
-    { stage: 'Internal review', count: 3, pct: 12 },
-    { stage: 'Negotiation', count: 8, pct: 32 },
-    { stage: 'Signature', count: 4, pct: 16 },
-    { stage: 'Active', count: 5, pct: 20 },
-  ];
+  const totalPipelineCount = p.reduce((sum, row) => sum + (row.count || 0), 0) || 1;
 
   return (
     <ClauseLayout title="Dashboard">
@@ -47,10 +59,10 @@ export default function Dashboard({ stats, queue, renewals, pipeline }) {
 
       {/* KPIs */}
       <div className="stat-grid mb-24">
-        <StatTile label="Active contract value" value={s.activeValue} currency="$" delta="+12.3%" deltaDir="up" sub="vs last quarter" />
-        <StatTile label="In negotiation" value={s.inNegotiation} delta="+3" deltaDir="up" sub="this week" />
-        <StatTile label="Avg. cycle time" value={s.avgCycle} delta="-2d" deltaDir="up" sub="vs last month" />
-        <StatTile label="Renewing in 90 days" value={s.renewingSoon} sub="contracts" />
+        <StatTile label="Active contract value" value={activeValue} currency="$" delta="+12.3%" deltaDir="up" sub="vs last quarter" />
+        <StatTile label="In negotiation" value={inNegotiation} delta="+3" deltaDir="up" sub="this week" />
+        <StatTile label="Avg. cycle time" value={avgCycle} delta="-2d" deltaDir="up" sub="vs last month" />
+        <StatTile label="Renewing in 90 days" value={renewingSoon} sub="contracts" />
       </div>
 
       {/* Two-column: Queue + Renewals */}
@@ -68,17 +80,25 @@ export default function Dashboard({ stats, queue, renewals, pipeline }) {
                 </tr>
               </thead>
               <tbody>
-                {q.map((item) => (
-                  <tr key={item.id} className="clickable-row" onClick={() => router.visit(`/contracts/${item.id}`)}>
+                {q.length > 0 ? q.map((item) => (
+                  <tr key={item.id}>
                     <td>
-                      <div className="cell-primary">{item.title}</div>
-                      <div className="cell-secondary">{item.id}</div>
+                      <Link href={`/contracts/${item.id}`} className="cell-primary" style={{ textDecoration: 'none' }}>
+                        {item.title || 'Untitled'}
+                      </Link>
+                      <div className="cell-secondary">{item.contract_number || ''}</div>
                     </td>
-                    <td>{item.counterparty}</td>
-                    <td><Badge status={item.status}>{item.status}</Badge></td>
-                    <td className="cell-secondary">{item.updated}</td>
+                    <td>{item.counterparty?.name || '-'}</td>
+                    <td><Badge status={item.status || 'neutral'}>{item.status || '-'}</Badge></td>
+                    <td className="cell-secondary">{timeAgo(item.updated_at)}</td>
                   </tr>
-                ))}
+                )) : (
+                  <tr>
+                    <td colSpan={4} style={{ textAlign: 'center', color: 'var(--text-4)', padding: 32 }}>
+                      No contracts in your queue
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
@@ -86,41 +106,53 @@ export default function Dashboard({ stats, queue, renewals, pipeline }) {
 
         {/* Renewals */}
         <Card title="Renewals coming up" action={<Btn variant="ghost" size="sm">View all <ChevronRight size={14} /></Btn>} padding={false}>
-          {r.map((item) => (
-            <div className="renewal-card" key={item.id}>
-              <div className="renewal-card-header">
-                <span className="renewal-card-title">{item.title}</span>
-                <span className="renewal-card-date">
-                  <Clock size={12} style={{ display: 'inline', verticalAlign: '-2px', marginRight: 4 }} />
-                  {item.daysLeft}d left
-                </span>
+          {r.length > 0 ? r.map((item) => {
+            const days = daysUntil(item.end_date);
+            const progress = item.progress ?? 0;
+            return (
+              <div className="renewal-card" key={item.id}>
+                <div className="renewal-card-header">
+                  <span className="renewal-card-title">{item.title || 'Untitled'}</span>
+                  <span className="renewal-card-date">
+                    <Clock size={12} style={{ display: 'inline', verticalAlign: '-2px', marginRight: 4 }} />
+                    {days !== null ? `${days}d left` : '-'}
+                  </span>
+                </div>
+                <div className="renewal-card-party">{item.counterparty?.name || '-'}</div>
+                <div className="progress-bar">
+                  <div
+                    className={`progress-fill ${days !== null && days < 20 ? 'warn' : ''}`}
+                    style={{ width: `${progress}%` }}
+                  />
+                </div>
               </div>
-              <div className="renewal-card-party">{item.counterparty}</div>
-              <div className="progress-bar">
-                <div
-                  className={`progress-fill ${item.daysLeft < 20 ? 'warn' : ''}`}
-                  style={{ width: `${item.progress}%` }}
-                />
-              </div>
+            );
+          }) : (
+            <div style={{ padding: 32, textAlign: 'center', color: 'var(--text-4)' }}>
+              No upcoming renewals
             </div>
-          ))}
+          )}
         </Card>
       </div>
 
       {/* Pipeline */}
       <Card title="Pipeline by stage">
         <div className="bar-chart">
-          {p.map((row) => (
-            <div className="bar-row" key={row.stage}>
-              <span className="bar-label">{row.stage}</span>
-              <div className="bar-track">
-                <div className="bar-fill" style={{ width: `${row.pct}%` }}>
-                  {row.count}
+          {p.map((row) => {
+            const pct = Math.round((row.count / totalPipelineCount) * 100);
+            const label = row.name ? row.name.charAt(0).toUpperCase() + row.name.slice(1) : '';
+            return (
+              <div className="bar-row" key={row.name || label}>
+                <span className="bar-label">{label}</span>
+                <div className="bar-track">
+                  <div className="bar-fill" style={{ width: `${pct}%` }}>
+                    {row.count || 0}
+                  </div>
                 </div>
+                <span className="bar-value">{pct}%</span>
               </div>
-              <span className="bar-value">{row.pct}%</span>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </Card>
     </ClauseLayout>

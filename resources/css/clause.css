@@ -1892,6 +1892,9 @@ tbody tr:last-child td {
   margin-top: 4px;
 }
 
+.auth-card .field { margin-bottom: 16px; }
+.auth-card .field:last-of-type { margin-bottom: 20px; }
+
 .auth-status {
   padding: 10px 14px;
   background: var(--mint-soft);
