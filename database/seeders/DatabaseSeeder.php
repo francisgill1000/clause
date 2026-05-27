@@ -16,13 +16,11 @@ class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
-        // ── Admin User (reads from env in production) ──────────────────
-        $user = User::create([
-            'name' => 'Imani Okafor',
-            'email' => env('Admin_EMAIL', 'imani@halcyon.io'),
-            'password' => bcrypt(env('Admin_PASSWORD', 'password')),
-            'email_verified_at' => now(),
-        ]);
+        $user = User::first();
+        if (! $user) {
+            $this->command?->warn('No user found — register via the UI first, then run db:seed.');
+            return;
+        }
 
         $uid = $user->id;
 

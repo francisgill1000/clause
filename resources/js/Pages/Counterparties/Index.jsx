@@ -1,33 +1,87 @@
 import React, { useState, useMemo } from 'react';
-import { Head } from '@inertiajs/react';
+import { Head, useForm, router } from '@inertiajs/react';
 import ClauseLayout from '../../Layouts/ClauseLayout';
-import { PageHeader, Btn, Badge } from '../../Components/Clause/UI';
-import { Download, Plus, Search, More } from '../../Components/Clause/Icons';
-
-const defaultCounterparties = [
-  { id: 1, name: 'Acme Corp', domain: 'acme.com', initials: 'AC', contracts: 5, active: 3, totalValue: '$760,000', since: 'Jan 2023', risk: 'low' },
-  { id: 2, name: 'Globex Inc', domain: 'globex.io', initials: 'GI', contracts: 3, active: 2, totalValue: '$420,000', since: 'Mar 2023', risk: 'low' },
-  { id: 3, name: 'Initech LLC', domain: 'initech.com', initials: 'IL', contracts: 2, active: 1, totalValue: '$185,000', since: 'Jun 2024', risk: 'medium' },
-  { id: 4, name: 'Umbrella Co', domain: 'umbrella.co', initials: 'UC', contracts: 4, active: 2, totalValue: '$530,000', since: 'Sep 2022', risk: 'high' },
-  { id: 5, name: 'Skyline Tech', domain: 'skyline.tech', initials: 'ST', contracts: 6, active: 4, totalValue: '$1,240,000', since: 'Feb 2022', risk: 'low' },
-  { id: 6, name: 'NovaCare', domain: 'novacare.io', initials: 'NC', contracts: 2, active: 1, totalValue: '$120,000', since: 'Dec 2024', risk: 'medium' },
-  { id: 7, name: 'TradeLink', domain: 'tradelink.com', initials: 'TL', contracts: 3, active: 2, totalValue: '$310,000', since: 'Jul 2023', risk: 'low' },
-  { id: 8, name: 'Bridgepoint Advisory', domain: 'bridgepoint.co', initials: 'BA', contracts: 1, active: 0, totalValue: '$180,000', since: 'Jan 2025', risk: 'low' },
-];
+import { PageHeader, Btn, Badge, Drawer, Field, Input, Select } from '../../Components/Clause/UI';
+import { Download, Plus, Search, More, Edit, Trash, X, Check } from '../../Components/Clause/Icons';
 
 const riskBadgeMap = { low: 'active', medium: 'warn', high: 'danger' };
+const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#a855f7', '#ec4899', '#0ea5e9', '#14b8a6', '#ef4444'];
+
+function generateInitials(name) {
+  return name.split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase();
+}
 
 export default function Index({ counterparties: propCounterparties }) {
-  const counterparties = propCounterparties || defaultCounterparties;
+  const counterparties = propCounterparties || [];
   const [search, setSearch] = useState('');
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [editing, setEditing] = useState(null);
+  const [menuOpen, setMenuOpen] = useState(null);
+
+  const { data, setData, post, put, processing, errors, reset } = useForm({
+    name: '',
+    initials: '',
+    domain: '',
+    color: COLORS[0],
+    risk_tier: 'low',
+    relationship_since: '',
+  });
 
   const filtered = useMemo(() => {
     if (!search) return counterparties;
     const q = search.toLowerCase();
     return counterparties.filter(
-      (cp) => cp.name.toLowerCase().includes(q) || cp.domain.toLowerCase().includes(q)
+      (cp) => cp.name.toLowerCase().includes(q) || (cp.domain || '').toLowerCase().includes(q)
     );
   }, [counterparties, search]);
+
+  function openCreate() {
+    setEditing(null);
+    reset();
+    setData({ name: '', initials: '', domain: '', color: COLORS[Math.floor(Math.random() * COLORS.length)], risk_tier: 'low', relationship_since: '' });
+    setDrawerOpen(true);
+  }
+
+  function openEdit(cp) {
+    setEditing(cp);
+    setData({
+      name: cp.name || '',
+      initials: cp.initials || '',
+      domain: cp.domain || '',
+      color: cp.color || COLORS[0],
+      risk_tier: cp.risk_tier || 'low',
+      relationship_since: cp.relationship_since || '',
+    });
+    setDrawerOpen(true);
+    setMenuOpen(null);
+  }
+
+  function handleSubmit(e) {
+    e.preventDefault();
+    if (editing) {
+      put(typeof route === 'function' ? route('counterparties.update', editing.id) : `/counterparties/${editing.id}`, {
+        onSuccess: () => { setDrawerOpen(false); reset(); },
+      });
+    } else {
+      post(typeof route === 'function' ? route('counterparties.store') : '/counterparties', {
+        onSuccess: () => { setDrawerOpen(false); reset(); },
+      });
+    }
+  }
+
+  function handleDelete(cp) {
+    if (!confirm(`Delete "${cp.name}"? This cannot be undone.`)) return;
+    router.delete(typeof route === 'function' ? route('counterparties.destroy', cp.id) : `/counterparties/${cp.id}`);
+    setMenuOpen(null);
+  }
+
+  function handleNameChange(val) {
+    setData((prev) => ({
+      ...prev,
+      name: val,
+      initials: !editing ? generateInitials(val) : prev.initials,
+    }));
+  }
 
   return (
     <ClauseLayout title="Counterparties">
@@ -39,7 +93,7 @@ export default function Index({ counterparties: propCounterparties }) {
         actions={
           <>
             <Btn variant="ghost" size="sm" icon={Download}>Export</Btn>
-            <Btn variant="primary" size="sm" icon={Plus}>Add counterparty</Btn>
+            <Btn variant="primary" size="sm" icon={Plus} onClick={openCreate}>Add counterparty</Btn>
           </>
         }
       />
@@ -64,9 +118,7 @@ export default function Index({ counterparties: propCounterparties }) {
                 <tr>
                   <th>Counterparty</th>
                   <th>Contracts</th>
-                  <th>Active</th>
                   <th>Total value</th>
-                  <th>Relationship since</th>
                   <th>Risk tier</th>
                   <th style={{ width: 40 }}></th>
                 </tr>
@@ -76,32 +128,55 @@ export default function Index({ counterparties: propCounterparties }) {
                   <tr key={cp.id}>
                     <td>
                       <div className="customer-cell">
-                        <div className="cp-logo">{cp.initials}</div>
+                        <div className="cp-logo" style={{ backgroundColor: cp.color || '#3b82f6' }}>{cp.initials}</div>
                         <div>
                           <div className="customer-name">{cp.name}</div>
-                          <div className="customer-sub">{cp.domain}</div>
+                          <div className="customer-sub">{cp.domain || '—'}</div>
                         </div>
                       </div>
                     </td>
-                    <td>{cp.contracts}</td>
-                    <td>{cp.active}</td>
-                    <td className="cell-mono">{cp.totalValue}</td>
-                    <td className="cell-secondary">{cp.since}</td>
+                    <td>{cp.contracts_count ?? 0}</td>
+                    <td className="cell-mono">
+                      ${((cp.contracts_sum_value || 0) / 1).toLocaleString()}
+                    </td>
                     <td>
-                      <Badge status={riskBadgeMap[cp.risk] || 'neutral'}>
-                        {cp.risk}
+                      <Badge status={riskBadgeMap[cp.risk_tier] || 'neutral'}>
+                        {cp.risk_tier || 'unset'}
                       </Badge>
                     </td>
                     <td>
-                      <button className="btn btn-ghost btn-sm">
-                        <More size={16} />
-                      </button>
+                      <div style={{ position: 'relative' }}>
+                        <button
+                          className="btn btn-ghost btn-sm"
+                          onClick={() => setMenuOpen(menuOpen === cp.id ? null : cp.id)}
+                        >
+                          <More size={16} />
+                        </button>
+                        {menuOpen === cp.id && (
+                          <div className="dropdown-menu" style={{ position: 'absolute', right: 0, top: '100%', zIndex: 50, background: 'var(--bg-2)', border: '1px solid var(--border)', borderRadius: 8, padding: '4px 0', minWidth: 140, boxShadow: '0 4px 16px rgba(0,0,0,.12)' }}>
+                            <button
+                              className="dropdown-item"
+                              style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '8px 14px', border: 'none', background: 'none', cursor: 'pointer', fontSize: 13, color: 'var(--text-1)' }}
+                              onClick={() => openEdit(cp)}
+                            >
+                              <Edit size={14} /> Edit
+                            </button>
+                            <button
+                              className="dropdown-item"
+                              style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '8px 14px', border: 'none', background: 'none', cursor: 'pointer', fontSize: 13, color: 'var(--danger)' }}
+                              onClick={() => handleDelete(cp)}
+                            >
+                              <Trash size={14} /> Delete
+                            </button>
+                          </div>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}
                 {filtered.length === 0 && (
                   <tr>
-                    <td colSpan={7} style={{ textAlign: 'center', padding: 40, color: 'var(--text-4)' }}>
+                    <td colSpan={5} style={{ textAlign: 'center', padding: 40, color: 'var(--text-4)' }}>
                       No counterparties found
                     </td>
                   </tr>
@@ -111,6 +186,64 @@ export default function Index({ counterparties: propCounterparties }) {
           </div>
         </div>
       </div>
+
+      {/* Create / Edit drawer */}
+      <Drawer
+        open={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        title={editing ? 'Edit counterparty' : 'Add counterparty'}
+        footer={
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+            <Btn variant="ghost" size="md" icon={X} onClick={() => setDrawerOpen(false)}>Cancel</Btn>
+            <Btn variant="primary" size="md" icon={Check} onClick={handleSubmit} disabled={processing}>
+              {editing ? 'Save changes' : 'Create'}
+            </Btn>
+          </div>
+        }
+      >
+        <form onSubmit={handleSubmit}>
+          <Field label="Name" hint={errors.name}>
+            <Input
+              placeholder="e.g. Acme Corp"
+              value={data.name}
+              onChange={(e) => handleNameChange(e.target.value)}
+            />
+          </Field>
+
+          <Field label="Initials" hint={errors.initials}>
+            <Input
+              placeholder="AC"
+              maxLength={4}
+              value={data.initials}
+              onChange={(e) => setData('initials', e.target.value.toUpperCase())}
+            />
+          </Field>
+
+          <Field label="Domain" hint={errors.domain}>
+            <Input
+              placeholder="acme.com"
+              value={data.domain}
+              onChange={(e) => setData('domain', e.target.value)}
+            />
+          </Field>
+
+          <Field label="Risk tier" hint={errors.risk_tier}>
+            <Select value={data.risk_tier} onChange={(e) => setData('risk_tier', e.target.value)}>
+              <option value="low">Low</option>
+              <option value="medium">Medium</option>
+              <option value="high">High</option>
+            </Select>
+          </Field>
+
+          <Field label="Relationship since" hint={errors.relationship_since}>
+            <Input
+              type="date"
+              value={data.relationship_since}
+              onChange={(e) => setData('relationship_since', e.target.value)}
+            />
+          </Field>
+        </form>
+      </Drawer>
     </ClauseLayout>
   );
 }

@@ -1,79 +1,80 @@
-import React from 'react';
-import { Head, Link } from '@inertiajs/react';
+import React, { useState } from 'react';
+import { Head, Link, router, useForm } from '@inertiajs/react';
 import ClauseLayout from '../../Layouts/ClauseLayout';
 import { Badge, Btn } from '../../Components/Clause/UI';
 import {
   History, Download, MessageSquare, Edit, Send, Check,
-  FileText, Eye, Clock, AlertTriangle, Paperclip, ChevronRight,
+  FileText, Eye, Clock, AlertTriangle, Paperclip, ChevronRight, Trash,
 } from '../../Components/Clause/Icons';
 
-const defaultContract = {
-  id: 'CTR-1024',
-  title: 'SaaS Master Agreement',
-  status: 'review',
-  type: 'MSA',
-  pages: 24,
-  clauses: 47,
-  lastEdited: '2h ago',
-  openRedlines: 3,
-  value: '$240,000',
-  effective: '2025-01-15',
-  expires: '2026-01-15',
-  riskScore: 32,
-  riskLevel: 'low',
-  parties: [
-    { name: 'Acme Corp', role: 'Counterparty', initials: 'AC', signed: false },
-    { name: 'Sarah Chen', role: 'Internal signer', initials: 'SC', signed: true },
-  ],
-  terms: [
-    { key: 'Contract value', value: '$240,000 / year' },
-    { key: 'Payment terms', value: 'Net 30' },
-    { key: 'Auto-renewal', value: 'Yes, 12 months' },
-    { key: 'Notice period', value: '90 days' },
-    { key: 'Governing law', value: 'Delaware, US' },
-    { key: 'Liability cap', value: '2x annual fees' },
-  ],
-  milestones: [
-    { label: 'Contract created', date: 'Jan 10, 2025', done: true },
-    { label: 'Internal review complete', date: 'Jan 14, 2025', done: true },
-    { label: 'Sent to counterparty', date: 'Jan 15, 2025', done: true },
-    { label: 'Counterparty signature', date: 'Pending', done: false },
-    { label: 'Effective date', date: 'Jan 20, 2025', done: false },
-  ],
-  comments: [
-    { author: 'Sarah Chen', initials: 'SC', text: 'I have updated the liability cap to 2x as discussed. Please review clause 7.2.', time: '2 hours ago' },
-    { author: 'James Liu', initials: 'JL', text: 'Looks good. Can we also add a carve-out for IP claims?', time: '1 hour ago' },
-  ],
-  activities: [
-    { text: '<strong>Sarah Chen</strong> uploaded revised document', time: '2h ago' },
-    { text: '<strong>James Liu</strong> commented on clause 7.2', time: '1h ago' },
-    { text: '<strong>System</strong> sent reminder to Acme Corp', time: '30m ago' },
-  ],
-};
-
-const pipelineSteps = ['Drafting', 'Internal review', 'Negotiation', 'Signature', 'Active'];
+const pipelineSteps = ['Drafting', 'Review', 'Signature', 'Active'];
 
 function getPipelineState(status) {
-  const map = { drafting: 0, review: 1, negotiation: 2, signature: 3, active: 4 };
-  return map[status] ?? 1;
+  const map = { drafting: 0, review: 1, signature: 2, active: 3, expiring: 3 };
+  return map[status] ?? 0;
 }
 
-export default function Show({ contract: propContract }) {
-  const contract = propContract || defaultContract;
-  const activeStep = getPipelineState(contract.status);
+function fmt(val) {
+  if (!val && val !== 0) return '—';
+  return '$' + Number(val).toLocaleString();
+}
 
-  const riskAngle = -90 + (contract.riskScore / 100) * 180;
+export default function Show({ contract }) {
+  if (!contract) return null;
+
+  const activeStep = getPipelineState(contract.status);
+  const riskScore = contract.risk_score || 0;
+  const riskLevel = riskScore >= 75 ? 'high' : riskScore >= 40 ? 'medium' : 'low';
+  const riskAngle = -90 + (riskScore / 100) * 180;
+
+  const parties = contract.parties || [];
+  const milestones = contract.milestones || [];
+  const comments = contract.comments || [];
+  const activities = contract.activities || [];
+
+  const [commentText, setCommentText] = useState('');
+  const commentForm = useForm({ body: '' });
+
+  function submitComment(e) {
+    e.preventDefault();
+    if (!commentText.trim()) return;
+    commentForm.setData('body', commentText);
+    commentForm.post(
+      typeof route === 'function'
+        ? route('contracts.comments.store', contract.id)
+        : `/contracts/${contract.id}/comments`,
+      {
+        data: { body: commentText },
+        onSuccess: () => setCommentText(''),
+        preserveScroll: true,
+      }
+    );
+  }
+
+  function handleDelete() {
+    if (!confirm(`Delete "${contract.title}"? This cannot be undone.`)) return;
+    router.delete(typeof route === 'function' ? route('contracts.destroy', contract.id) : `/contracts/${contract.id}`);
+  }
+
+  const terms = [
+    { key: 'Contract value', value: fmt(contract.value) },
+    { key: 'Currency', value: contract.currency || 'USD' },
+    { key: 'Term', value: contract.term || '—' },
+    { key: 'Auto-renewal', value: contract.auto_renew || 'Off' },
+    { key: 'Notice period', value: contract.notice_period || '—' },
+    { key: 'Start date', value: contract.start_date || '—' },
+    { key: 'End date', value: contract.end_date || '—' },
+  ];
 
   return (
     <ClauseLayout title={contract.title}>
       <Head title={contract.title} />
 
-      {/* Detail Hero */}
       <div className="detail-hero">
         <div className="breadcrumb">
           <Link href={typeof route === 'function' ? route('contracts.index') : '/contracts'}>Contracts</Link>
           <ChevronRight size={12} />
-          <span>{contract.id}</span>
+          <span>{contract.contract_number}</span>
         </div>
 
         <h1>{contract.title}</h1>
@@ -82,26 +83,26 @@ export default function Show({ contract: propContract }) {
           <Badge status={contract.status}>{contract.status}</Badge>
           <div className="detail-meta-item">
             <FileText size={13} />
-            {contract.pages} pages &middot; {contract.clauses} clauses
+            {contract.type}
           </div>
-          <div className="detail-meta-item">
-            <Clock size={13} />
-            Edited {contract.lastEdited}
-          </div>
-          {contract.openRedlines > 0 && (
-            <div className="detail-meta-item" style={{ color: 'var(--danger)' }}>
-              <AlertTriangle size={13} />
-              {contract.openRedlines} open redlines
+          {contract.counterparty && (
+            <div className="detail-meta-item">
+              {contract.counterparty.name}
             </div>
           )}
         </div>
 
         <div className="detail-actions">
-          <Btn variant="ghost" size="sm" icon={History}>History</Btn>
           <Btn variant="ghost" size="sm" icon={Download}>Export</Btn>
-          <Btn variant="ghost" size="sm" icon={MessageSquare}>Comment</Btn>
-          <Btn variant="secondary" size="sm" icon={Edit}>Edit</Btn>
-          <Btn variant="primary" size="sm" icon={Send}>Send for signature</Btn>
+          <Btn
+            variant="secondary"
+            size="sm"
+            icon={Edit}
+            onClick={() => router.visit(typeof route === 'function' ? route('contracts.edit', contract.id) : `/contracts/${contract.id}/edit`)}
+          >
+            Edit
+          </Btn>
+          <Btn variant="ghost" size="sm" icon={Trash} onClick={handleDelete} style={{ color: 'var(--danger)' }}>Delete</Btn>
         </div>
       </div>
 
@@ -123,89 +124,30 @@ export default function Show({ contract: propContract }) {
         })}
       </div>
 
-      {/* Two-column detail grid */}
       <div className="detail-grid">
-        {/* LEFT — Document preview */}
+        {/* LEFT */}
         <div className="contract-doc">
           <div className="sec-bar">
             <div className="sec-bar-title">
               <FileText size={16} />
-              Document preview
-            </div>
-            <div className="sec-bar-actions">
-              <Btn variant="ghost" size="sm" icon={Eye}>View</Btn>
-              <Btn variant="ghost" size="sm" icon={Edit}>Edit</Btn>
+              Contract details
             </div>
           </div>
 
           <div className="doc-body">
             <div className="doc-section">
-              <h2>1. Services</h2>
-              <p>
-                Provider shall deliver the software-as-a-service platform described in
-                <span className="var">Exhibit A</span> (the "Services") to Client during
-                the Term. Provider shall maintain availability of at least
-                <span className="var">99.9%</span> uptime measured monthly, excluding
-                scheduled maintenance windows.
-              </p>
-            </div>
-
-            <div className="doc-section">
-              <h2>4. Fees &amp; Payment</h2>
-              <p>
-                Client shall pay Provider the annual fee of <span className="var">$240,000</span> in
-                accordance with the payment schedule in <span className="var">Exhibit B</span>.
-                All invoices are due within <span className="var">Net 30</span> days of receipt.
-              </p>
-              <p>
-                <span className="strike">Late payments shall incur interest at 1.5% per month.</span>{' '}
-                <span className="redline">Late payments shall incur interest at the lesser of 1% per month or the maximum rate permitted by law.</span>
-              </p>
-            </div>
-
-            <div className="doc-section">
-              <h2>7. Limitation of Liability</h2>
-              <h3>7.1 Cap</h3>
-              <p>
-                Neither party's aggregate liability under this Agreement shall exceed
-                <span className="var">2x the annual fees</span> paid or payable in
-                the twelve (12) months preceding the claim.
-              </p>
-              <h3>7.2 Exclusions</h3>
-              <p>
-                The foregoing limitation shall not apply to: (a) breaches of confidentiality;
-                (b) indemnification obligations; or (c) willful misconduct.
-              </p>
-            </div>
-
-            <div className="doc-section">
-              <h2>11. Term &amp; Termination</h2>
-              <p>
-                This Agreement shall commence on the <span className="var">Effective Date</span> and
-                continue for an initial term of <span className="var">12 months</span> (the "Initial Term").
-                Thereafter, it shall automatically renew for successive <span className="var">12-month</span> periods
-                unless either party provides written notice of non-renewal at least
-                <span className="var">90 days</span> prior to the end of the then-current term.
-              </p>
-            </div>
-
-            <div className="doc-section">
-              <h2>Signatures</h2>
-              <div className="sig-grid">
-                {contract.parties.map((party) => (
-                  <div className="sig-block" key={party.name}>
-                    <div className="sig-label">{party.role}</div>
-                    <div className="sig-name">{party.name}</div>
-                    <div className="sig-role">{party.role}</div>
-                    <div className={`sig-status ${party.signed ? 'signed' : 'pending'}`}>
-                      {party.signed ? (
-                        <><Check size={14} /> Signed</>
-                      ) : (
-                        <><Clock size={14} /> Pending</>
-                      )}
-                    </div>
-                  </div>
+              <h2>Contract information</h2>
+              <div className="terms-list" style={{ marginTop: 16 }}>
+                <div className="term-item"><span className="term-key">Contract #</span><span className="term-value">{contract.contract_number}</span></div>
+                <div className="term-item"><span className="term-key">Title</span><span className="term-value">{contract.title}</span></div>
+                <div className="term-item"><span className="term-key">Type</span><span className="term-value">{contract.type}</span></div>
+                <div className="term-item"><span className="term-key">Status</span><span className="term-value">{contract.status}</span></div>
+                <div className="term-item"><span className="term-key">Counterparty</span><span className="term-value">{contract.counterparty?.name || '—'}</span></div>
+                <div className="term-item"><span className="term-key">Owner</span><span className="term-value">{contract.owner?.name || '—'}</span></div>
+                {terms.map((t) => (
+                  <div className="term-item" key={t.key}><span className="term-key">{t.key}</span><span className="term-value">{t.value}</span></div>
                 ))}
+                <div className="term-item"><span className="term-key">Progress</span><span className="term-value">{contract.progress ?? 0}%</span></div>
               </div>
             </div>
           </div>
@@ -221,119 +163,116 @@ export default function Show({ contract: propContract }) {
             <div className="rail-card-body">
               <div className="risk-meter">
                 <div className="risk-dial" style={{ '--risk-angle': `${riskAngle}deg` }} />
-                <div className={`risk-label ${contract.riskLevel}`}>
-                  {contract.riskLevel?.charAt(0).toUpperCase() + contract.riskLevel?.slice(1)} risk
+                <div className={`risk-label ${riskLevel}`}>
+                  {riskLevel.charAt(0).toUpperCase() + riskLevel.slice(1)} risk
                 </div>
-                <div className="risk-score">Score: {contract.riskScore}/100</div>
+                <div className="risk-score">Score: {riskScore}/100</div>
               </div>
             </div>
           </div>
 
           {/* Parties & signers */}
-          <div className="rail-card">
-            <div className="rail-card-header">
-              <span className="rail-card-title">Parties &amp; signers</span>
-            </div>
-            <div className="rail-card-body">
-              {contract.parties.map((p) => (
-                <div className="party-row" key={p.name}>
-                  <div className="party-avatar">{p.initials}</div>
-                  <div className="party-info">
-                    <div className="party-name">{p.name}</div>
-                    <div className="party-role">{p.role}</div>
-                  </div>
-                  <Badge status={p.signed ? 'active' : 'pending'}>
-                    {p.signed ? 'Signed' : 'Pending'}
-                  </Badge>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Key terms */}
-          <div className="rail-card">
-            <div className="rail-card-header">
-              <span className="rail-card-title">Key terms</span>
-            </div>
-            <div className="rail-card-body">
-              <div className="terms-list">
-                {contract.terms.map((t) => (
-                  <div className="term-item" key={t.key}>
-                    <span className="term-key">{t.key}</span>
-                    <span className="term-value">{t.value}</span>
+          {parties.length > 0 && (
+            <div className="rail-card">
+              <div className="rail-card-header">
+                <span className="rail-card-title">Parties &amp; signers</span>
+              </div>
+              <div className="rail-card-body">
+                {parties.map((p) => (
+                  <div className="party-row" key={p.id}>
+                    <div className="party-avatar">{p.initials}</div>
+                    <div className="party-info">
+                      <div className="party-name">{p.signer_name}</div>
+                      <div className="party-role">{p.company_name} — {p.signer_title}</div>
+                    </div>
+                    <Badge status={p.signed ? 'active' : 'pending'}>
+                      {p.signed ? 'Signed' : 'Pending'}
+                    </Badge>
                   </div>
                 ))}
               </div>
             </div>
-          </div>
+          )}
 
           {/* Milestones */}
-          <div className="rail-card">
-            <div className="rail-card-header">
-              <span className="rail-card-title">Milestones</span>
-            </div>
-            <div className="rail-card-body">
-              <div className="milestones">
-                {contract.milestones.map((m, i) => (
-                  <div className="milestone-item" key={i}>
-                    <span className={`milestone-dot ${m.done ? 'done' : 'upcoming'}`} />
-                    <div>
-                      <div className="milestone-text">{m.label}</div>
-                      <div className="milestone-date">{m.date}</div>
+          {milestones.length > 0 && (
+            <div className="rail-card">
+              <div className="rail-card-header">
+                <span className="rail-card-title">Milestones</span>
+              </div>
+              <div className="rail-card-body">
+                <div className="milestones">
+                  {milestones.map((m) => (
+                    <div className="milestone-item" key={m.id}>
+                      <span className={`milestone-dot ${m.is_completed ? 'done' : 'upcoming'}`} />
+                      <div>
+                        <div className="milestone-text">{m.name}</div>
+                        <div className="milestone-date">{m.target_date}</div>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
             </div>
-          </div>
+          )}
 
           {/* Discussion */}
           <div className="rail-card">
             <div className="rail-card-header">
               <span className="rail-card-title">Discussion</span>
-              <span style={{ fontSize: 11, color: 'var(--text-4)' }}>{contract.comments.length} comments</span>
+              <span style={{ fontSize: 11, color: 'var(--text-4)' }}>{comments.length} comments</span>
             </div>
             <div className="rail-card-body">
               <div className="thread">
-                {contract.comments.map((c, i) => (
-                  <div className="thread-msg" key={i}>
-                    <div className="thread-avatar">{c.initials}</div>
+                {comments.map((c) => (
+                  <div className="thread-msg" key={c.id}>
+                    <div className="thread-avatar">{c.initials || c.author_name?.charAt(0) || '?'}</div>
                     <div className="thread-bubble">
-                      <div className="thread-author">{c.author}</div>
-                      <div className="thread-text">{c.text}</div>
-                      <div className="thread-time">{c.time}</div>
+                      <div className="thread-author">{c.author_name}</div>
+                      <div className="thread-text">{c.body}</div>
+                      <div className="thread-time">{c.company}</div>
                     </div>
                   </div>
                 ))}
-                <div className="thread-reply">
-                  <input type="text" placeholder="Write a reply..." />
-                  <Btn variant="primary" size="sm" icon={Send}>Send</Btn>
-                </div>
+                {comments.length === 0 && (
+                  <div style={{ padding: '16px 0', color: 'var(--text-4)', fontSize: 13 }}>No comments yet</div>
+                )}
+                <form className="thread-reply" onSubmit={submitComment}>
+                  <input
+                    type="text"
+                    placeholder="Write a comment..."
+                    value={commentText}
+                    onChange={(e) => setCommentText(e.target.value)}
+                  />
+                  <Btn variant="primary" size="sm" icon={Send} type="submit" disabled={commentForm.processing}>Send</Btn>
+                </form>
               </div>
             </div>
           </div>
 
           {/* Activity feed */}
-          <div className="rail-card">
-            <div className="rail-card-header">
-              <span className="rail-card-title">Activity</span>
-            </div>
-            <div className="rail-card-body">
-              <div className="activity-feed">
-                {contract.activities.map((a, i) => (
-                  <div className="activity-item" key={i}>
-                    <div className="activity-icon">
-                      <Clock size={14} />
+          {activities.length > 0 && (
+            <div className="rail-card">
+              <div className="rail-card-header">
+                <span className="rail-card-title">Activity</span>
+              </div>
+              <div className="rail-card-body">
+                <div className="activity-feed">
+                  {activities.map((a) => (
+                    <div className="activity-item" key={a.id}>
+                      <div className="activity-icon">
+                        <Clock size={14} />
+                      </div>
+                      <div>
+                        <div className="activity-text"><strong>{a.actor}</strong> — {a.description}</div>
+                        <div className="activity-time">{a.when_text}</div>
+                      </div>
                     </div>
-                    <div>
-                      <div className="activity-text" dangerouslySetInnerHTML={{ __html: a.text }} />
-                      <div className="activity-time">{a.time}</div>
-                    </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
     </ClauseLayout>

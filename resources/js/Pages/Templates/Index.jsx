@@ -1,45 +1,81 @@
 import React, { useState, useMemo } from 'react';
-import { Head } from '@inertiajs/react';
+import { Head, useForm, router } from '@inertiajs/react';
 import ClauseLayout from '../../Layouts/ClauseLayout';
-import { PageHeader, Btn, Tabs } from '../../Components/Clause/UI';
-import { Folder, Plus, Search } from '../../Components/Clause/Icons';
+import { PageHeader, Btn, Drawer, Field, Input, Select, Textarea } from '../../Components/Clause/UI';
+import { Folder, Plus, Search, Edit, Trash, X, Check } from '../../Components/Clause/Icons';
 
-const defaultTemplates = [
-  { id: 1, name: 'Master Services Agreement', description: 'Standard MSA for software and professional services engagements.', department: 'Legal', uses: 34, category: 'legal' },
-  { id: 2, name: 'Non-Disclosure Agreement', description: 'Mutual NDA for protecting confidential information during discussions.', department: 'Legal', uses: 67, category: 'legal' },
-  { id: 3, name: 'Statement of Work', description: 'Project-scoped SOW defining deliverables, timeline, and payment.', department: 'Sales', uses: 28, category: 'sales' },
-  { id: 4, name: 'Data Processing Addendum', description: 'GDPR-compliant DPA for processing personal data on behalf of clients.', department: 'Privacy', uses: 19, category: 'privacy' },
-  { id: 5, name: 'Employee Offer Letter', description: 'Standard offer letter template for full-time employees.', department: 'People', uses: 52, category: 'people' },
-  { id: 6, name: 'Consulting Agreement', description: 'Independent contractor agreement for consulting engagements.', department: 'Ops', uses: 15, category: 'ops' },
-  { id: 7, name: 'Software License Agreement', description: 'Enterprise software license with SLA and support terms.', department: 'Sales', uses: 22, category: 'sales' },
-  { id: 8, name: 'Vendor Agreement', description: 'Standard terms for engaging third-party vendors and suppliers.', department: 'Ops', uses: 11, category: 'ops' },
-];
+const DEPARTMENTS = ['Legal', 'Sales', 'Ops', 'People', 'Privacy', 'Finance', 'Engineering'];
 
 const categories = [
   { key: 'all', label: 'All' },
-  { key: 'legal', label: 'Legal' },
-  { key: 'sales', label: 'Sales' },
-  { key: 'ops', label: 'Ops' },
-  { key: 'people', label: 'People' },
-  { key: 'privacy', label: 'Privacy' },
+  { key: 'Legal', label: 'Legal' },
+  { key: 'Sales', label: 'Sales' },
+  { key: 'Ops', label: 'Ops' },
+  { key: 'People', label: 'People' },
+  { key: 'Privacy', label: 'Privacy' },
 ];
 
 export default function Index({ templates: propTemplates }) {
-  const templates = propTemplates || defaultTemplates;
+  const templates = propTemplates || [];
   const [cat, setCat] = useState('all');
   const [search, setSearch] = useState('');
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [editing, setEditing] = useState(null);
+
+  const { data, setData, post, put, processing, errors, reset } = useForm({
+    name: '',
+    description: '',
+    department: 'Legal',
+    ribbon: '',
+  });
 
   const filtered = useMemo(() => {
     let list = templates;
-    if (cat !== 'all') list = list.filter((t) => t.category === cat);
+    if (cat !== 'all') list = list.filter((t) => t.department === cat);
     if (search) {
       const q = search.toLowerCase();
       list = list.filter(
-        (t) => t.name.toLowerCase().includes(q) || t.description.toLowerCase().includes(q)
+        (t) => t.name.toLowerCase().includes(q) || (t.description || '').toLowerCase().includes(q)
       );
     }
     return list;
   }, [templates, cat, search]);
+
+  function openCreate() {
+    setEditing(null);
+    reset();
+    setData({ name: '', description: '', department: 'Legal', ribbon: '' });
+    setDrawerOpen(true);
+  }
+
+  function openEdit(tpl) {
+    setEditing(tpl);
+    setData({
+      name: tpl.name || '',
+      description: tpl.description || '',
+      department: tpl.department || 'Legal',
+      ribbon: tpl.ribbon || '',
+    });
+    setDrawerOpen(true);
+  }
+
+  function handleSubmit(e) {
+    e?.preventDefault();
+    if (editing) {
+      put(typeof route === 'function' ? route('templates.update', editing.id) : `/templates/${editing.id}`, {
+        onSuccess: () => { setDrawerOpen(false); reset(); },
+      });
+    } else {
+      post(typeof route === 'function' ? route('templates.store') : '/templates', {
+        onSuccess: () => { setDrawerOpen(false); reset(); },
+      });
+    }
+  }
+
+  function handleDelete(tpl) {
+    if (!confirm(`Delete template "${tpl.name}"? This cannot be undone.`)) return;
+    router.delete(typeof route === 'function' ? route('templates.destroy', tpl.id) : `/templates/${tpl.id}`);
+  }
 
   return (
     <ClauseLayout title="Templates">
@@ -51,7 +87,7 @@ export default function Index({ templates: propTemplates }) {
         actions={
           <>
             <Btn variant="ghost" size="sm" icon={Folder}>Folders</Btn>
-            <Btn variant="primary" size="sm" icon={Plus}>New template</Btn>
+            <Btn variant="primary" size="sm" icon={Plus} onClick={openCreate}>New template</Btn>
           </>
         }
       />
@@ -87,15 +123,32 @@ export default function Index({ templates: propTemplates }) {
                 <div className="tpl-glyph-line" />
                 <div className="tpl-glyph-line" />
               </div>
-              <span className="tpl-ribbon">{tpl.department}</span>
+              {tpl.ribbon && <span className="tpl-ribbon">{tpl.ribbon}</span>}
+              {!tpl.ribbon && tpl.department && <span className="tpl-ribbon">{tpl.department}</span>}
             </div>
             <div className="tpl-body">
               <div className="tpl-name">{tpl.name}</div>
               <div className="tpl-desc">{tpl.description}</div>
             </div>
             <div className="tpl-footer">
-              <span>{tpl.uses} uses</span>
-              <span>{tpl.department}</span>
+              <span>{tpl.uses_count ?? 0} uses</span>
+              <div style={{ display: 'flex', gap: 4 }}>
+                <button
+                  className="btn btn-ghost btn-sm"
+                  title="Edit"
+                  onClick={() => openEdit(tpl)}
+                >
+                  <Edit size={14} />
+                </button>
+                <button
+                  className="btn btn-ghost btn-sm"
+                  title="Delete"
+                  onClick={() => handleDelete(tpl)}
+                  style={{ color: 'var(--danger)' }}
+                >
+                  <Trash size={14} />
+                </button>
+              </div>
             </div>
           </div>
         ))}
@@ -105,6 +158,55 @@ export default function Index({ templates: propTemplates }) {
           </div>
         )}
       </div>
+
+      {/* Create / Edit drawer */}
+      <Drawer
+        open={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        title={editing ? 'Edit template' : 'New template'}
+        footer={
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+            <Btn variant="ghost" size="md" icon={X} onClick={() => setDrawerOpen(false)}>Cancel</Btn>
+            <Btn variant="primary" size="md" icon={Check} onClick={handleSubmit} disabled={processing}>
+              {editing ? 'Save changes' : 'Create'}
+            </Btn>
+          </div>
+        }
+      >
+        <form onSubmit={handleSubmit}>
+          <Field label="Name" hint={errors.name}>
+            <Input
+              placeholder="e.g. Mutual NDA"
+              value={data.name}
+              onChange={(e) => setData('name', e.target.value)}
+            />
+          </Field>
+
+          <Field label="Description" hint={errors.description}>
+            <Textarea
+              placeholder="What is this template for?"
+              value={data.description}
+              onChange={(e) => setData('description', e.target.value)}
+            />
+          </Field>
+
+          <Field label="Department" hint={errors.department}>
+            <Select value={data.department} onChange={(e) => setData('department', e.target.value)}>
+              {DEPARTMENTS.map((d) => (
+                <option key={d} value={d}>{d}</option>
+              ))}
+            </Select>
+          </Field>
+
+          <Field label="Ribbon label" hint={errors.ribbon}>
+            <Input
+              placeholder="e.g. Popular, New, Updated (optional)"
+              value={data.ribbon}
+              onChange={(e) => setData('ribbon', e.target.value)}
+            />
+          </Field>
+        </form>
+      </Drawer>
     </ClauseLayout>
   );
 }
