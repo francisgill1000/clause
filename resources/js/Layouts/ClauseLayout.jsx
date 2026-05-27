@@ -6,40 +6,43 @@ import {
   Settings, Search, Bell, Plus,
 } from '../Components/Clause/Icons';
 
-const nav = [
-  {
-    heading: 'Workspace',
-    items: [
-      { label: 'Dashboard',           icon: Dashboard,  route: 'dashboard' },
-      { label: 'Contracts',           icon: FileText,   route: 'contracts.index', badge: 8 },
-      { label: 'Inbox',               icon: Inbox,      route: 'inbox',           badge: 3, pulse: true },
-      { label: 'Awaiting signature',  icon: Signature,  route: 'signature',       badge: 2 },
-      { label: 'Renewals',            icon: Repeat,     route: 'renewals',        badge: 1 },
-    ],
-  },
-  {
-    heading: 'Library',
-    items: [
-      { label: 'Templates',    icon: Folder,    route: 'templates.index' },
-      { label: 'Clause bank',  icon: BookOpen,  route: 'clauses' },
-      { label: 'Playbooks',    icon: Layers,    route: 'playbooks' },
-    ],
-  },
-  {
-    heading: 'People',
-    items: [
-      { label: 'Counterparties', icon: Building, route: 'counterparties.index' },
-      { label: 'Team',           icon: Users,    route: 'team' },
-    ],
-  },
-  {
-    heading: 'Insights',
-    items: [
-      { label: 'Reports',   icon: Chart,   route: 'reports' },
-      { label: 'Audit log', icon: History, route: 'audit' },
-    ],
-  },
-];
+function buildNav(sidebarCounts) {
+  const c = sidebarCounts || {};
+  return [
+    {
+      heading: 'Workspace',
+      items: [
+        { label: 'Dashboard',           icon: Dashboard,  route: 'dashboard' },
+        { label: 'Contracts',           icon: FileText,   route: 'contracts.index', badge: c.contracts },
+        { label: 'Inbox',               icon: Inbox,      route: 'inbox',           badge: c.review, pulse: c.review > 0 },
+        { label: 'Awaiting signature',  icon: Signature,  route: 'signature',       badge: c.signature },
+        { label: 'Renewals',            icon: Repeat,     route: 'renewals',        badge: c.expiring },
+      ],
+    },
+    {
+      heading: 'Library',
+      items: [
+        { label: 'Templates',    icon: Folder,    route: 'templates.index' },
+        { label: 'Clause bank',  icon: BookOpen,  route: 'clauses' },
+        { label: 'Playbooks',    icon: Layers,    route: 'playbooks' },
+      ],
+    },
+    {
+      heading: 'People',
+      items: [
+        { label: 'Counterparties', icon: Building, route: 'counterparties.index' },
+        { label: 'Team',           icon: Users,    route: 'team' },
+      ],
+    },
+    {
+      heading: 'Insights',
+      items: [
+        { label: 'Reports',   icon: Chart,   route: 'reports' },
+        { label: 'Audit log', icon: History, route: 'audit' },
+      ],
+    },
+  ];
+}
 
 function isActive(routeName, current) {
   if (!current) return false;
@@ -47,9 +50,10 @@ function isActive(routeName, current) {
 }
 
 export default function ClauseLayout({ children, title = '' }) {
-  const { auth, url } = usePage().props;
+  const { auth, url, sidebarCounts } = usePage().props;
   const currentRoute = typeof route === 'function' ? route().current() : '';
   const user = auth?.user;
+  const nav = buildNav(sidebarCounts);
   const initials = user?.name
     ? user.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
     : 'CL';

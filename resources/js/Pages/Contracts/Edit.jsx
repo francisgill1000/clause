@@ -4,6 +4,11 @@ import ClauseLayout from '../../Layouts/ClauseLayout';
 import { PageHeader, Btn, Field, Input, Select, Textarea } from '../../Components/Clause/UI';
 import { Check, X } from '../../Components/Clause/Icons';
 
+function toDateInput(val) {
+  if (!val) return '';
+  return String(val).slice(0, 10);
+}
+
 export default function Edit({ contract, counterparties, users }) {
   const { data, setData, put, processing, errors } = useForm({
     title: contract.title || '',
@@ -12,7 +17,7 @@ export default function Edit({ contract, counterparties, users }) {
     owner_id: contract.owner_id || '',
     value: contract.value || '',
     currency: contract.currency || 'USD',
-    start_date: contract.start_date || '',
+    start_date: toDateInput(contract.start_date),
     end_date: contract.end_date || '',
     term: contract.term || '',
     auto_renew: contract.auto_renew || '',

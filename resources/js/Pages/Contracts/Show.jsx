@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Head, Link, router, useForm } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
 import ClauseLayout from '../../Layouts/ClauseLayout';
 import { Badge, Btn } from '../../Components/Clause/UI';
 import {
@@ -19,6 +19,11 @@ function fmt(val) {
   return '$' + Number(val).toLocaleString();
 }
 
+function fmtDate(val) {
+  if (!val) return '—';
+  return String(val).slice(0, 10);
+}
+
 export default function Show({ contract }) {
   if (!contract) return null;
 
@@ -33,20 +38,21 @@ export default function Show({ contract }) {
   const activities = contract.activities || [];
 
   const [commentText, setCommentText] = useState('');
-  const commentForm = useForm({ body: '' });
+  const [commentProcessing, setCommentProcessing] = useState(false);
 
   function submitComment(e) {
     e.preventDefault();
-    if (!commentText.trim()) return;
-    commentForm.setData('body', commentText);
-    commentForm.post(
+    if (!commentText.trim() || commentProcessing) return;
+    setCommentProcessing(true);
+    router.post(
       typeof route === 'function'
         ? route('contracts.comments.store', contract.id)
         : `/contracts/${contract.id}/comments`,
+      { body: commentText },
       {
-        data: { body: commentText },
-        onSuccess: () => setCommentText(''),
         preserveScroll: true,
+        onSuccess: () => setCommentText(''),
+        onFinish: () => setCommentProcessing(false),
       }
     );
   }
@@ -62,7 +68,7 @@ export default function Show({ contract }) {
     { key: 'Term', value: contract.term || '—' },
     { key: 'Auto-renewal', value: contract.auto_renew || 'Off' },
     { key: 'Notice period', value: contract.notice_period || '—' },
-    { key: 'Start date', value: contract.start_date || '—' },
+    { key: 'Start date', value: fmtDate(contract.start_date) },
     { key: 'End date', value: contract.end_date || '—' },
   ];
 
@@ -244,7 +250,7 @@ export default function Show({ contract }) {
                     value={commentText}
                     onChange={(e) => setCommentText(e.target.value)}
                   />
-                  <Btn variant="primary" size="sm" icon={Send} type="submit" disabled={commentForm.processing}>Send</Btn>
+                  <Btn variant="primary" size="sm" icon={Send} type="submit" disabled={commentProcessing}>Send</Btn>
                 </form>
               </div>
             </div>

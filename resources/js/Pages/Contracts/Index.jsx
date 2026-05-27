@@ -137,7 +137,7 @@ export default function Index({ contracts: propContracts, counts: propCounts, st
                     <td>{c.counterparty?.name || '—'}</td>
                     <td><Badge status={c.status}>{c.status}</Badge></td>
                     <td className="cell-mono">{fmt(c.value)}</td>
-                    <td className="cell-secondary">{c.start_date || '—'}</td>
+                    <td className="cell-secondary">{c.start_date ? String(c.start_date).slice(0, 10) : '—'}</td>
                     <td className="cell-secondary">{c.end_date || '—'}</td>
                     <td>
                       <div style={{ position: 'relative' }}>

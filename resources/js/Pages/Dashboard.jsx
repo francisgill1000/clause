@@ -1,5 +1,5 @@
 import React from 'react';
-import { Head, Link, usePage } from '@inertiajs/react';
+import { Head, Link, usePage, router } from '@inertiajs/react';
 import ClauseLayout from '../Layouts/ClauseLayout';
 import { PageHeader, StatTile, Card, Badge, Btn } from '../Components/Clause/UI';
 import { ChevronRight, Clock, FileText } from '../Components/Clause/Icons';
@@ -68,7 +68,7 @@ export default function Dashboard({ stats, queue, renewals, pipeline }) {
       {/* Two-column: Queue + Renewals */}
       <div className="grid-2 mb-24">
         {/* Queue */}
-        <Card title="In your queue" action={<Btn variant="ghost" size="sm">View all <ChevronRight size={14} /></Btn>} padding={false}>
+        <Card title="In your queue" action={<Btn variant="ghost" size="sm" onClick={() => router.visit('/contracts')}>View all <ChevronRight size={14} /></Btn>} padding={false}>
           <div className="table-wrap">
             <table className="queue-table">
               <thead>
@@ -105,7 +105,7 @@ export default function Dashboard({ stats, queue, renewals, pipeline }) {
         </Card>
 
         {/* Renewals */}
-        <Card title="Renewals coming up" action={<Btn variant="ghost" size="sm">View all <ChevronRight size={14} /></Btn>} padding={false}>
+        <Card title="Renewals coming up" action={<Btn variant="ghost" size="sm" onClick={() => router.visit('/contracts')}>View all <ChevronRight size={14} /></Btn>} padding={false}>
           {r.length > 0 ? r.map((item) => {
             const days = daysUntil(item.end_date);
             const progress = item.progress ?? 0;

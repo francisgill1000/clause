@@ -1,37 +1,22 @@
 import React from 'react';
 import { Head, useForm } from '@inertiajs/react';
 import ClauseLayout from '../../Layouts/ClauseLayout';
-import { PageHeader, Btn, Field, Input, Select, Textarea } from '../../Components/Clause/UI';
+import { PageHeader, Btn, Field, Input, Select } from '../../Components/Clause/UI';
 import { Check, X } from '../../Components/Clause/Icons';
 
-export default function Create({ counterparties: propCounterparties, users: propUsers }) {
-  const counterparties = propCounterparties || [
-    { id: 1, name: 'Acme Corp' },
-    { id: 2, name: 'Globex Inc' },
-    { id: 3, name: 'Initech LLC' },
-    { id: 4, name: 'Umbrella Co' },
-    { id: 5, name: 'Skyline Tech' },
-  ];
-
-  const users = propUsers || [
-    { id: 1, name: 'Sarah Chen' },
-    { id: 2, name: 'James Liu' },
-    { id: 3, name: 'Maria Gonzalez' },
-  ];
-
+export default function Create({ counterparties, users }) {
   const { data, setData, post, processing, errors } = useForm({
     title: '',
-    type: 'msa',
+    type: 'MSA',
     counterparty_id: '',
     owner_id: '',
     value: '',
     currency: 'USD',
     start_date: '',
     end_date: '',
-    term: '12',
-    auto_renew: true,
-    notice_period: '90',
-    description: '',
+    term: '',
+    auto_renew: '',
+    notice_period: '',
   });
 
   const submit = (e) => {
@@ -50,6 +35,12 @@ export default function Create({ counterparties: propCounterparties, users: prop
 
       <div className="card" style={{ maxWidth: 680 }}>
         <div className="card-body">
+          {(!counterparties || counterparties.length === 0) && (
+            <div style={{ padding: '12px 16px', marginBottom: 16, background: 'var(--bg-3)', borderRadius: 8, fontSize: 13, color: 'var(--text-3)' }}>
+              You need to add a counterparty first before creating a contract.{' '}
+              <a href="/counterparties" style={{ color: 'var(--accent)' }}>Go to Counterparties</a>
+            </div>
+          )}
           <form onSubmit={submit}>
             <Field label="Title" hint={errors.title}>
               <Input
@@ -62,11 +53,16 @@ export default function Create({ counterparties: propCounterparties, users: prop
             <div className="grid-2">
               <Field label="Type">
                 <Select value={data.type} onChange={(e) => setData('type', e.target.value)}>
-                  <option value="msa">MSA</option>
-                  <option value="nda">NDA</option>
-                  <option value="sow">SOW</option>
-                  <option value="amendment">Amendment</option>
-                  <option value="renewal">Renewal</option>
+                  <option value="MSA">MSA</option>
+                  <option value="NDA">NDA</option>
+                  <option value="SOW">SOW</option>
+                  <option value="Lease">Lease</option>
+                  <option value="IP Licence">IP Licence</option>
+                  <option value="Supply">Supply</option>
+                  <option value="Services">Services</option>
+                  <option value="Side Letter">Side Letter</option>
+                  <option value="Amendment">Amendment</option>
+                  <option value="Renewal">Renewal</option>
                 </Select>
               </Field>
 
@@ -84,7 +80,7 @@ export default function Create({ counterparties: propCounterparties, users: prop
               <Field label="Counterparty" hint={errors.counterparty_id}>
                 <Select value={data.counterparty_id} onChange={(e) => setData('counterparty_id', e.target.value)}>
                   <option value="">Select counterparty...</option>
-                  {counterparties.map((cp) => (
+                  {(counterparties || []).map((cp) => (
                     <option key={cp.id} value={cp.id}>{cp.name}</option>
                   ))}
                 </Select>
@@ -93,7 +89,7 @@ export default function Create({ counterparties: propCounterparties, users: prop
               <Field label="Owner" hint={errors.owner_id}>
                 <Select value={data.owner_id} onChange={(e) => setData('owner_id', e.target.value)}>
                   <option value="">Select owner...</option>
-                  {users.map((u) => (
+                  {(users || []).map((u) => (
                     <option key={u.id} value={u.id}>{u.name}</option>
                   ))}
                 </Select>
@@ -129,37 +125,32 @@ export default function Create({ counterparties: propCounterparties, users: prop
             </div>
 
             <div className="grid-3">
-              <Field label="Term (months)">
+              <Field label="Term">
                 <Input
-                  type="number"
+                  placeholder="e.g. 12 months"
                   value={data.term}
                   onChange={(e) => setData('term', e.target.value)}
                 />
               </Field>
 
               <Field label="Auto-renew">
-                <Select value={data.auto_renew ? '1' : '0'} onChange={(e) => setData('auto_renew', e.target.value === '1')}>
-                  <option value="1">Yes</option>
-                  <option value="0">No</option>
+                <Select value={data.auto_renew} onChange={(e) => setData('auto_renew', e.target.value)}>
+                  <option value="">None</option>
+                  <option value="On (12 mo)">On (12 mo)</option>
+                  <option value="On (6 mo)">On (6 mo)</option>
+                  <option value="On (24 mo)">On (24 mo)</option>
+                  <option value="Off">Off</option>
                 </Select>
               </Field>
 
-              <Field label="Notice period (days)">
+              <Field label="Notice period">
                 <Input
-                  type="number"
+                  placeholder="e.g. 90 days"
                   value={data.notice_period}
                   onChange={(e) => setData('notice_period', e.target.value)}
                 />
               </Field>
             </div>
-
-            <Field label="Description / notes">
-              <Textarea
-                placeholder="Optional description or internal notes..."
-                value={data.description}
-                onChange={(e) => setData('description', e.target.value)}
-              />
-            </Field>
 
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 24 }}>
               <Btn
